@@ -1,0 +1,8 @@
+service: service-name
+
+provider:
+  name: aws
+  stage: dev
+  # The variables declared here will be accesible through out the project.
+  environment: 
+    SYSTEM_ID: jdoe

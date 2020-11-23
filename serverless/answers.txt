@@ -1,0 +1,5 @@
+1) Caching can be implemented in various manners. Caching can be done at cloudfront level, at api gateway level or at lambda. The way to add caching in the api gateway level for variables has
+a couple of ways to do it, but I believe using a plugin as serverless-api-gateway-caching works, as can be looked in the snippet.
+2) To add general environment variables the only thing needed is declaring them within the provider as environment.
+3) Until the moment I have not found a direct way to add an ec2 endpoint without the use of lambda. The only way I find possible to use ec2
+as an endpoint is using lambda as a proxy.

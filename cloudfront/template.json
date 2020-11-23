@@ -1,0 +1,227 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "template for uploading a static page to s3 using cloudfront as distribution and a hosted zone.",
+    "Parameters": {
+      "Env": {
+        "Type": "String",
+        "Default": "develop",
+        "AllowedValues": [
+          "develop",
+          "staging",
+          "production"
+        ],
+        "Description": "Define the environment to deploy. Accepted values are \"develop\", \"staging\" and \"production\""
+      },
+      "AwsCertificateArn": {
+        "Type": "String",
+        "Default": "<YOUR CERTIFICATE ARN HERE>",
+        "Description": "Insert here the certificate ARN. Creating certificates within cloudformation can affect the flow because of verification."
+      },
+      "AwsRoute53CloudFrontHostedZoneId": {
+        "Type": "String",
+        "Default": "Z2FDTNDSDCF3A",
+        "Description": "Route 53 pre existent hosted zone"
+      }
+    },
+    "Mappings": {
+      "EnvironmentMaps": {
+        "develop": {
+          "CloudFrontPriceClass": "PriceClass_100",
+          "Domain": "development.technicaltest.com",
+          "Route53HostedZoneName": "<DEVELOPMENT ROUTE 53 HOSTED ZONE NAME>",
+          "S3BucketName": "<DEVELOPMENT S3 BUCKET NAME>"
+        },
+        "staging": {
+          "CloudFrontPriceClass": "PriceClass_200",
+          "Domain": "staging.technicaltest.com",
+          "Route53HostedZoneName": "<STAGING ROUTE 53 HOSTED ZONE NAME>",
+          "S3BucketName": "<STAGING S3 BUCKET NAME>"
+        },
+        "production": {
+          "CloudFrontPriceClass": "PriceClass_All",
+          "Domain": "technicaltest.com",
+          "Route53HostedZoneName": "<PRODUCTION ROUTE 53 HOSTED ZONE NAME>",
+          "S3BucketName": "<PRODUCTION S3 BUCKET NAME>"
+        }
+      }
+    },
+    "Resources": {
+      "AcmeAcmeCloudFrontIdentity": {
+        "Type": "AWS::CloudFront::CloudFrontOriginAccessIdentity",
+        "Properties": {
+          "CloudFrontOriginAccessIdentityConfig": {
+            "Comment": [
+              "",
+              [
+                "AcmeAcmeApp (",
+                "Env",
+                ") Origin Access Identity"
+              ]
+            ]
+          }
+        }
+      },
+      "AcmeAcmeS3Bucket": {
+        "Type": "AWS::S3::Bucket",
+        "Properties": {
+          "BucketName": [
+            "EnvironmentMaps",
+            "Env",
+            "S3BucketName"
+          ]
+        }
+      },
+      "AcmeAcmeCloudFront": {
+        "Type": "AWS::CloudFront::Distribution",
+        "Properties": {
+          "DistributionConfig": {
+            "Aliases": [
+              [
+                "EnvironmentMaps",
+                "Env",
+                "Domain"
+              ]
+            ],
+            "Comment": [
+              "",
+              [
+                "AcmeAcmeApp ",
+                "Env"
+              ]
+            ],
+            "DefaultCacheBehavior": {
+              "AllowedMethods": [
+                "GET",
+                "HEAD"
+              ],
+              "CachedMethods": [
+                "GET",
+                "HEAD"
+              ],
+              "ForwardedValues": {
+                "QueryString": true
+              },
+              "TargetOriginId": [
+                "",
+                [
+                  "S3-origin-",
+                  [
+                    "EnvironmentMaps",
+                    "Env",
+                    "S3BucketName"
+                  ]
+                ]
+              ],
+              "ViewerProtocolPolicy": "redirect-to-https"
+            },
+            "DefaultRootObject": "index.html",
+            "Enabled": true,
+            "HttpVersion": "http2",
+            "IPV6Enabled": true,
+            "Origins": [
+              {
+                "DomainName": "AcmeAcmeS3Bucket.RegionalDomainName",
+                "Id": [
+                  "",
+                  [
+                    "S3-origin-",
+                    [
+                      "EnvironmentMaps",
+                      "Env",
+                      "S3BucketName"
+                    ]
+                  ]
+                ],
+                "S3OriginConfig": {
+                  "OriginAccessIdentity": "origin-access-identity/cloudfront/${AcmeAcmeCloudFrontIdentity}"
+                }
+              }
+            ],
+            "PriceClass": [
+              "EnvironmentMaps",
+              "Env",
+              "CloudFrontPriceClass"
+            ],
+            "ViewerCertificate": {
+              "AcmCertificateArn": "AwsCertificateArn",
+              "MinimumProtocolVersion": "TLSv1.2_2018",
+              "SslSupportMethod": "sni-only"
+            }
+          }
+        }
+      },
+      "AcmeAcmeS3BucketPolicy": {
+        "Type": "AWS::S3::BucketPolicy",
+        "Properties": {
+          "Bucket": "AcmeAcmeS3Bucket",
+          "PolicyDocument": {
+            "Statement": [
+              {
+                "Action": [
+                  "s3:GetObject"
+                ],
+                "Effect": "Allow",
+                "Principal": {
+                  "AWS": [
+                    "",
+                    [
+                      "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ",
+                      "AcmeAcmeCloudFrontIdentity"
+                    ]
+                  ]
+                },
+                "Resource": [
+                  "",
+                  [
+                    "arn:aws:s3:::",
+                    "AcmeAcmeS3Bucket",
+                    "/*"
+                  ]
+                ]
+              }
+            ],
+            "Version": "2012-10-17"
+          }
+        }
+      },
+      "AcmeAcmeRoute53": {
+        "Type": "AWS::Route53::RecordSet",
+        "Properties": {
+          "AliasTarget": {
+            "DNSName": "AcmeAcmeCloudFront.DomainName",
+            "EvaluateTargetHealth": false,
+            "HostedZoneId": "AwsRoute53CloudFrontHostedZoneId"
+          },
+          "Comment": [
+            "",
+            [
+              "AcmeAcmeApp ",
+              "Env",
+              " Route"
+            ]
+          ],
+          "HostedZoneName": [
+            "EnvironmentMaps",
+            "Env",
+            "Route53HostedZoneName"
+          ],
+          "Name": [
+            "EnvironmentMaps",
+            "Env",
+            "Domain"
+          ],
+          "Type": "A"
+        }
+      }
+    },
+    "Outputs": {
+      "Route53URL": {
+        "Value": "AcmeAcmeRoute53",
+        "Description": "AcmeAcmeApp URL"
+      },
+      "CloudFrontURL": {
+        "Value": "AcmeAcmeCloudFront.DomainName",
+        "Description": "AcmeAcmeCloudFront URL"
+      }
+    }
+  }

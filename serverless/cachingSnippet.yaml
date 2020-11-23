@@ -1,0 +1,12 @@
+  # Responses are cached based on the 'pawId' path parameter and the 'Accept-Language' header
+  get-cat-by-paw-id:
+    handler: rest_api/cat/get/handler.handle
+    events:
+      - http:
+          path: /cats/{pawId}
+          method: get
+          caching:
+            enabled: true
+            cacheKeyParameters:
+              - name: request.path.pawId
+              - name: request.header.Accept-Language
